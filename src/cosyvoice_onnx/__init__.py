@@ -21,6 +21,7 @@ from .api import CosyVoiceTTS, create_tts
 from .config import CosyVoiceConfig
 from .types import AudioData, PresetVoice, ProgressInfo, AudioChunk
 from .model_manager import ModelManager, ModelNotFoundError, ModelDownloadError
+from .streaming import StreamingEngine, StreamingConfig
 
 __all__ = [
     # Main API
@@ -28,6 +29,9 @@ __all__ = [
     "create_tts",
     # Configuration
     "CosyVoiceConfig",
+    # Streaming
+    "StreamingEngine",
+    "StreamingConfig",
     # Data types
     "AudioData",
     "PresetVoice", 

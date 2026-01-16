@@ -4,13 +4,15 @@ High-level API for CosyVoice3 ONNX TTS.
 
 import asyncio
 import time
+import uuid
 from pathlib import Path
-from typing import Optional, Callable, Union, AsyncIterator
+from typing import Optional, Callable, Union, AsyncIterator, Iterator
 import numpy as np
 
 from .config import CosyVoiceConfig
 from .model_manager import ModelManager
 from .engine import CosyVoiceEngine
+from .streaming import StreamingEngine, StreamingConfig
 from .types import AudioData, PresetVoice, ProgressInfo, AudioChunk
 from .utils.logger import setup_logger, get_logger
 
@@ -34,6 +36,14 @@ class CosyVoiceTTS:
             prompt_text="Hello, my name is Alice.",
             target_text="Nice to meet you!"
         )
+        
+        # Streaming synthesis
+        async for chunk in tts.synthesize_stream(
+            text="This is streaming output...",
+            prompt_audio="speaker.wav",
+            prompt_text="..."
+        ):
+            play_audio_chunk(chunk.data)
         ```
     """
     
@@ -74,7 +84,9 @@ class CosyVoiceTTS:
         # Initialize managers
         self.model_manager = ModelManager(self.config)
         self._engine: Optional[CosyVoiceEngine] = None
+        self._streaming_engine: Optional[StreamingEngine] = None
         self._presets: dict[str, PresetVoice] = {}
+        self._active_tasks: dict[str, StreamingEngine] = {}
         
         # Preload if requested
         if preload:
@@ -87,6 +99,13 @@ class CosyVoiceTTS:
             self.model_manager.load_models()
             self._engine = CosyVoiceEngine(self.model_manager, self.config)
         return self._engine
+    
+    def _ensure_streaming_engine(self) -> StreamingEngine:
+        """Ensure streaming engine is ready."""
+        engine = self._ensure_engine()
+        if self._streaming_engine is None:
+            self._streaming_engine = StreamingEngine(engine)
+        return self._streaming_engine
     
     async def synthesize_async(
         self,
@@ -326,6 +345,152 @@ class CosyVoiceTTS:
             volume=volume,
             output_format=output_format
         )
+    
+    # ========== Streaming API ==========
+    
+    async def synthesize_stream(
+        self,
+        text: str,
+        prompt_audio: Union[str, bytes, np.ndarray],
+        prompt_text: str,
+        speed: float = 1.0,
+        volume: float = 1.0,
+        chunk_size_tokens: int = 30,
+        on_progress: Optional[Callable[[ProgressInfo], None]] = None
+    ) -> AsyncIterator[AudioChunk]:
+        """Stream audio generation asynchronously.
+        
+        Yields audio chunks as they are generated, enabling real-time playback.
+        
+        Args:
+            text: Text to synthesize
+            prompt_audio: Reference audio for voice cloning
+            prompt_text: Transcript of reference audio
+            speed: Speech speed (applied to final audio)
+            volume: Output volume (applied to final audio)
+            chunk_size_tokens: Tokens per chunk (default 30)
+            on_progress: Progress callback
+            
+        Yields:
+            AudioChunk instances
+            
+        Example:
+            ```python
+            async for chunk in tts.synthesize_stream(text, prompt_audio, prompt_text):
+                play_chunk(chunk.data, chunk.sample_rate)
+                if chunk.is_final:
+                    print("Done!")
+            ```
+        """
+        import librosa
+        
+        # Load and prepare prompt audio
+        if isinstance(prompt_audio, str):
+            audio, sr = librosa.load(prompt_audio, sr=None)
+        elif isinstance(prompt_audio, bytes):
+            import io
+            import soundfile as sf
+            audio, sr = sf.read(io.BytesIO(prompt_audio))
+        else:
+            audio = prompt_audio
+            sr = 16000
+        
+        task_id = str(uuid.uuid4())
+        streaming_engine = self._ensure_streaming_engine()
+        streaming_engine.config.chunk_size_tokens = chunk_size_tokens
+        
+        self._active_tasks[task_id] = streaming_engine
+        
+        try:
+            async for chunk in streaming_engine.stream_inference(
+                text=text,
+                prompt_audio=audio,
+                prompt_audio_sr=sr,
+                prompt_text=prompt_text,
+                on_progress=on_progress,
+                task_id=task_id
+            ):
+                # Apply volume if needed
+                if volume != 1.0:
+                    audio_array = np.frombuffer(chunk.data, dtype=np.float32)
+                    audio_array = audio_array * volume
+                    audio_array = np.clip(audio_array, -1.0, 1.0)
+                    chunk.data = audio_array.astype(np.float32).tobytes()
+                
+                yield chunk
+        finally:
+            self._active_tasks.pop(task_id, None)
+    
+    def synthesize_stream_sync(
+        self,
+        text: str,
+        prompt_audio: Union[str, bytes, np.ndarray],
+        prompt_text: str,
+        speed: float = 1.0,
+        volume: float = 1.0,
+        chunk_size_tokens: int = 30,
+        on_progress: Optional[Callable[[ProgressInfo], None]] = None
+    ) -> Iterator[AudioChunk]:
+        """Stream audio generation synchronously.
+        
+        Args:
+            text: Text to synthesize
+            prompt_audio: Reference audio
+            prompt_text: Reference transcript
+            speed: Speech speed
+            volume: Output volume
+            chunk_size_tokens: Tokens per chunk
+            on_progress: Progress callback
+            
+        Yields:
+            AudioChunk instances
+        """
+        import librosa
+        
+        # Load prompt audio
+        if isinstance(prompt_audio, str):
+            audio, sr = librosa.load(prompt_audio, sr=None)
+        elif isinstance(prompt_audio, bytes):
+            import io
+            import soundfile as sf
+            audio, sr = sf.read(io.BytesIO(prompt_audio))
+        else:
+            audio = prompt_audio
+            sr = 16000
+        
+        streaming_engine = self._ensure_streaming_engine()
+        streaming_engine.config.chunk_size_tokens = chunk_size_tokens
+        
+        for chunk in streaming_engine._stream_sync_generator(
+            text=text,
+            prompt_audio=audio,
+            prompt_audio_sr=sr,
+            prompt_text=prompt_text,
+            on_progress=on_progress
+        ):
+            # Apply volume
+            if volume != 1.0:
+                audio_array = np.frombuffer(chunk.data, dtype=np.float32)
+                audio_array = audio_array * volume
+                audio_array = np.clip(audio_array, -1.0, 1.0)
+                chunk.data = audio_array.astype(np.float32).tobytes()
+            
+            yield chunk
+    
+    def cancel_synthesis(self, task_id: Optional[str] = None) -> None:
+        """Cancel an active streaming synthesis.
+        
+        Args:
+            task_id: Task ID to cancel. If None, cancels all active tasks.
+        """
+        if task_id:
+            if task_id in self._active_tasks:
+                self._active_tasks[task_id].cancel()
+                self.logger.info(f"Cancelled task: {task_id}")
+        else:
+            for tid, engine in self._active_tasks.items():
+                engine.cancel()
+                self.logger.info(f"Cancelled task: {tid}")
     
     def load_preset(self, name: str) -> PresetVoice:
         """Load a preset voice by name.

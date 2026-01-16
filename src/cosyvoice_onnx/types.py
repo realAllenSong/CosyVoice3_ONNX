@@ -135,3 +135,4 @@ class AudioChunk:
     channels: int
     format: str  # 'pcm16' or 'float32'
     is_final: bool
+    chunk_index: int = 0
