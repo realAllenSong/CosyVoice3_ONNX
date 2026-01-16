@@ -1,6 +1,6 @@
 [project]
 name = "cosyvoice-onnx"
-version = "0.1.0"
+version = "0.2.0"
 description = "CosyVoice3 ONNX - Simple CPU-based TTS with Voice Cloning"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -35,6 +35,7 @@ dependencies = [
 [project.optional-dependencies]
 gpu = ["onnxruntime-gpu>=1.18.0"]
 mp3 = ["pydub>=0.25.1"]
+text = ["WeTextProcessing>=1.0.0"]  # Full text normalization
 pyqt = ["PyQt5>=5.15.0"]
 dev = [
     "pytest>=7.0",
@@ -43,7 +44,7 @@ dev = [
     "ruff>=0.1.0",
 ]
 all = [
-    "cosyvoice-onnx[gpu,mp3,pyqt]",
+    "cosyvoice-onnx[gpu,mp3,text,pyqt]",
 ]
 
 [project.urls]

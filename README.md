@@ -116,7 +116,42 @@ audio.to_bytes(format="wav")       # 转换为 bytes
 audio.duration_ms                  # 时长（毫秒）
 audio.sample_rate                  # 采样率
 ```
+### 预设音色库
 
+包含45+个高质量预设音色，涵盖多语言、情感、方言和官方/名人音色。
+
+```python
+from cosyvoice_onnx import download_presets
+
+# 下载预设音色库
+download_presets("presets/voices")
+```
+
+**可用预设：**
+
+*   **多语言**: `zh_female_1`, `en_female_1`, `ja_female_1`, `ko_female_1`, `de_female_1` 等
+*   **情感**: `emotion_happy_zh`, `emotion_angry_en`, `emotion_sad_zh`, `emotion_fearful_en` 等
+*   **中国方言**: `dialect_cantonese` (粤语), `dialect_sichuan` (四川), `dialect_dongbei` (东北) 等
+*   **VoxCPM 官方**: `ben` (英语男声), `trump` (名人), `dialact_guangxi` (广西普通话) 等
+
+### HTTP 服务集成
+
+提供了 FastAPI 服务示例，轻松集成到微服务架构。
+
+```bash
+# 1. 安装依赖
+uv pip install fastapi uvicorn
+
+# 2. 运行服务
+python examples/server_example.py
+
+# 3. 调用 API
+curl -X POST "http://localhost:8000/tts" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "你好，世界", "voice": "zh_female_1"}'
+```
+
+详见 [examples/server_example.py](examples/server_example.py)。
 ## 🎯 使用场景
 
 ### 桌面应用集成（PyQt5）

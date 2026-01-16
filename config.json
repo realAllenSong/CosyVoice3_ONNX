@@ -1,0 +1,102 @@
+{
+    "// 说明": "CosyVoice3 ONNX 配置文件 - 修改后运行 ./tts.sh 即可",
+    
+    "// === 模式选择 ===": "",
+    "mode": "preset",
+    "// mode 选项": "clone (语音克隆) | preset (预设音色) | batch (批量处理)",
+    
+    "// === 输入文本 ===": "",
+    "text": "A股市场表现平平，meta compute实力强大",
+    "text_file": "",
+    "// text_file": "如果指定，则从文件读取文本，忽略 text 字段",
+    
+    "// === 语音克隆设置 (mode=clone) ===": "",
+    "clone": {
+        "prompt_audio": "examples/samples/test_prompt.wav",
+        "prompt_text": "Hello, my name is Sarah. I'm excited to help you with your project today.",
+        "// prompt_audio": "参考音频路径 (3-15秒最佳)",
+        "// prompt_text": "参考音频的文字内容 (必须准确)"
+    },
+    
+    "// === 预设音色设置 (mode=preset) ===": "",
+    "preset": {
+        "voice": "trump",
+        "// voice 选项 (语言)": "zh_female_1 | en_female_1 | ja_female_1 | ko_female_1 | de_female_1 ... (更多见 README)",
+        "// voice 选项 (情感)": "emotion_happy_zh | emotion_sad_zh | emotion_angry_zh | emotion_fearful_zh | emotion_surprised_zh ...",
+        "// voice 选项 (方言)": "dialect_cantonese | dialect_dongbei | dialect_tianjin | dialect_sichuan | dialect_shanghai | dialect_guangxi | dialect_henan",
+        "// voice 选项 (跨语言)": "crosslingual_zh_m | crosslingual_en_m | crosslingual_zh_f | crosslingual_en_f | mixedlingual_speaker",
+        "// voice 选项 (指令)": "instruct_neutral | instruct_angry | instruct_happy",
+        "// voice 选项 (VoxCPM官方)": "ben | trump | andy_lau | jia_ling | wu_jing | meiyangyang | cai_xukun | baoerjie"
+    },
+    
+    "// === 语音参数 ===": "",
+    "speech": {
+        "speed": 1.0,
+        "volume": 1.0,
+        "emotion": "neutral",
+        "language": "auto",
+        "dialect": null,
+        "// speed": "语速 (0.5-2.0)",
+        "// volume": "音量 (0.0-2.0)",
+        "// emotion 选项": "neutral | happy | sad | angry | calm | excited | serious | gentle",
+        "// language 选项": "auto | zh | en | jp | ko | de | fr | it | es | ru",
+        "// dialect 选项": "null | canton | sichuan | dongbei | shanghai | 等18种方言"
+    },
+    
+    "// === 文本处理 ===": "",
+    "text_processing": {
+        "enable_normalization": true,
+        "enable_prosody_tags": true,
+        "// enable_normalization": "启用文本规范化 (数字/日期转换)",
+        "// enable_prosody_tags": "启用韵律标签解析 ([happy], <pinyin:>等)"
+    },
+    
+    "// === 模型设置 ===": "",
+    "model": {
+        "precision": "fp16",
+        "num_threads": 0,
+        "preload": true,
+        "// precision 选项": "fp16 | fp32 | auto",
+        "// num_threads": "CPU 线程数 (0=自动)",
+        "// preload": "预加载模型到内存"
+    },
+    
+    "// === 生成参数 (高级) ===": "",
+    "generation": {
+        "sampling_k": 50,
+        "max_tokens": 1000,
+        "min_tokens": 40,
+        "n_timesteps": 50,
+        "// sampling_k": "Top-k 采样 (越大越多样)",
+        "// max_tokens": "最大生成 token 数",
+        "// min_tokens": "最小生成 token 数 (防止句子被截断)",
+        "// n_timesteps": "Flow 步数 (越多质量越好但更慢)"
+    },
+    
+    "// === 输出设置 ===": "",
+    "output": {
+        "file": "output.wav",
+        "format": "wav",
+        "normalize_volume": true,
+        "target_db": -20.0,
+        "trim_silence": true,
+        "// file": "输出文件路径",
+        "// format 选项": "wav | mp3 (mp3需要安装ffmpeg)",
+        "// normalize_volume": "音量归一化",
+        "// target_db": "目标音量 (dB)",
+        "// trim_silence": "裁剪首尾静音"
+    },
+    
+    "// === 批量处理 (mode=batch) ===": "",
+    "batch": {
+        "input_dir": "batch_input/",
+        "output_dir": "batch_output/",
+        "text_list": [
+            "第一句话",
+            "第二句话",
+            "第三句话"
+        ],
+        "// input_dir": "批量输入目录 (每个txt文件生成一个音频)",
+        "// text_list": "或者直接在这里列出所有文本"
+    }
+}

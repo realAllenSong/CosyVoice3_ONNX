@@ -15,13 +15,24 @@ Example:
     >>> audio.save("output.wav")
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .api import CosyVoiceTTS, create_tts
 from .config import CosyVoiceConfig
 from .types import AudioData, PresetVoice, ProgressInfo, AudioChunk
 from .model_manager import ModelManager, ModelNotFoundError, ModelDownloadError
 from .streaming import StreamingEngine, StreamingConfig
+from .audio_processor import AudioProcessor, normalize_volume, concat_audio
+from .utils.preset_downloader import download_presets
+from .frontend import (
+    TextNormalizer, 
+    normalize_text,
+    LanguageDetector,
+    SUPPORTED_LANGUAGES,
+    SUPPORTED_DIALECTS,
+    ProsodyParser,
+    parse_prosody_tags,
+)
 
 __all__ = [
     # Main API
@@ -32,6 +43,19 @@ __all__ = [
     # Streaming
     "StreamingEngine",
     "StreamingConfig",
+    # Audio Processing
+    "AudioProcessor",
+    "download_presets",
+    "normalize_volume",
+    "concat_audio",
+    # Text Frontend
+    "TextNormalizer",
+    "normalize_text",
+    "LanguageDetector",
+    "SUPPORTED_LANGUAGES",
+    "SUPPORTED_DIALECTS",
+    "ProsodyParser",
+    "parse_prosody_tags",
     # Data types
     "AudioData",
     "PresetVoice", 
@@ -42,3 +66,4 @@ __all__ = [
     "ModelNotFoundError",
     "ModelDownloadError",
 ]
+
