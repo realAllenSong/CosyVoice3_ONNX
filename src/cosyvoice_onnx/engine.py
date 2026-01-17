@@ -14,13 +14,13 @@ from .utils.logger import get_logger
 
 class CosyVoiceEngine:
     """Core TTS inference engine using ONNX models.
-    
+
     This class handles the low-level inference pipeline:
     1. LLM inference - generates speech tokens from text
     2. Flow inference - converts speech tokens to mel spectrograms
     3. HiFT inference - converts mel to audio waveform
     """
-    
+
     # Model parameters for CosyVoice3
     HIDDEN_DIM = 896
     SPEECH_TOKEN_SIZE = 6561
@@ -28,6 +28,10 @@ class CosyVoiceEngine:
     EOS_TOKEN = 6562  # End of sequence
     TASK_ID = 6563    # Task identifier
     SAMPLE_RATE = 24000
+
+    # Note: The official PyTorch CosyVoice3 may require an endofprompt prefix,
+    # but the ONNX export from ayousanz/cosy-voice3-onnx does NOT use it.
+    # Adding the prefix actually breaks generation with this ONNX export.
     
     def __init__(self, model_manager: ModelManager, config: CosyVoiceConfig):
         """Initialize the inference engine.
@@ -198,7 +202,7 @@ class CosyVoiceEngine:
         min_len: int = 10
     ) -> np.ndarray:
         """Generate speech tokens using LLM (zero-shot mode).
-        
+
         Args:
             text: Text to synthesize
             prompt_text: Transcript of prompt audio
@@ -206,13 +210,14 @@ class CosyVoiceEngine:
             sampling_k: Top-k sampling parameter
             max_len: Maximum output length
             min_len: Minimum output length
-            
+
         Returns:
             Generated speech tokens [1, seq_len]
         """
         self.logger.debug(f"LLM inference: text='{text[:50]}...'")
-        
-        # Tokenize texts
+        self.logger.debug(f"Prompt text: '{prompt_text[:80]}...'")
+
+        # Tokenize texts (no prefix needed for ONNX export)
         prompt_text_tokens = self.tokenize_text(prompt_text)
         tts_text_tokens = self.tokenize_text(text)
         

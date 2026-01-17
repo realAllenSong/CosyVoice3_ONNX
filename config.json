@@ -3,7 +3,7 @@
     
     "// === 模式选择 ===": "",
     "mode": "preset",
-    "// mode 选项": "clone (语音克隆) | preset (预设音色) | batch (批量处理)",
+    "// mode 选项": "server (HTTP服务) | clone (语音克隆) | preset (预设音色) | batch (批量处理)",
     
     "// === 输入文本 ===": "",
     "text": "A股市场表现平平，meta compute实力强大",
@@ -46,7 +46,7 @@
     "// === 文本处理 ===": "",
     "text_processing": {
         "enable_normalization": true,
-        "enable_prosody_tags": true,
+        "enable_prosody_tags": false,
         "// enable_normalization": "启用文本规范化 (数字/日期转换)",
         "// enable_prosody_tags": "启用韵律标签解析 ([happy], <pinyin:>等)"
     },
@@ -55,22 +55,46 @@
     "model": {
         "precision": "fp16",
         "num_threads": 0,
-        "preload": true,
-        "// precision 选项": "fp16 | fp32 | auto",
+        "preload": false,
+        "// precision 说明": "ONNX 模型只提供 fp16 版本 (LLM/Flow)",
+        "// precision 选项": "fp16 (推荐) | auto",
         "// num_threads": "CPU 线程数 (0=自动)",
-        "// preload": "预加载模型到内存"
+        "// preload": "预加载模型到内存 (内存充足时设为 true)"
+    },
+
+    "// === 服务器设置 (FastAPI) ===": "",
+    "server": {
+        "host": "127.0.0.1",
+        "port": 8000,
+        "workers": 1,
+        "log_level": "INFO",
+        "// host": "绑定地址 (127.0.0.1=仅本地, 0.0.0.0=允许外部访问)",
+        "// port": "端口号",
+        "// workers": "工作进程数 (TTS 建议使用 1)",
+        "// log_level": "日志级别 (DEBUG, INFO, WARNING, ERROR)"
+    },
+
+    "// === 音频验证设置 ===": "",
+    "audio": {
+        "target_sample_rate": 24000,
+        "auto_resample": true,
+        "min_duration_seconds": 1.0,
+        "max_duration_seconds": 30.0,
+        "// target_sample_rate": "CosyVoice3 使用 24kHz",
+        "// auto_resample": "自动重采样非 24kHz 音频",
+        "// min/max_duration": "参考音频时长限制"
     },
     
     "// === 生成参数 (高级) ===": "",
     "generation": {
-        "sampling_k": 50,
-        "max_tokens": 1000,
-        "min_tokens": 40,
+        "sampling_k": 25,
+        "max_tokens": 500,
+        "min_tokens": 10,
         "n_timesteps": 50,
-        "// sampling_k": "Top-k 采样 (越大越多样)",
-        "// max_tokens": "最大生成 token 数",
-        "// min_tokens": "最小生成 token 数 (防止句子被截断)",
-        "// n_timesteps": "Flow 步数 (越多质量越好但更慢)"
+        "// sampling_k": "Top-k 采样 (参考值: 25)",
+        "// max_tokens": "最大生成 token 数 (参考值: 500)",
+        "// min_tokens": "最小生成 token 数 (参考值: 10)",
+        "// n_timesteps": "Flow 步数 (参考值: 10, 越多质量越好但更慢)"
     },
     
     "// === 输出设置 ===": "",

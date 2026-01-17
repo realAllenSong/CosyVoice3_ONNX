@@ -57,10 +57,12 @@ class CosyVoiceTTS:
         log_level: str = "INFO"
     ):
         """Initialize CosyVoice TTS.
-        
+
         Args:
             model_dir: Path to model directory. Default: ~/.cosyvoice3/models
             precision: Precision mode: "fp16", "fp32", or "auto"
+                      "auto" will detect available models and use FP16 if available.
+                      Note: ONNX models from HuggingFace only provide FP16 for LLM/Flow.
             preload: If True, load models immediately
             num_threads: Number of CPU threads (0 = auto)
             config: Full configuration object (overrides other params)
@@ -68,14 +70,19 @@ class CosyVoiceTTS:
         """
         # Setup logging
         self.logger = setup_logger(level=log_level)
-        
+
+        # Use auto-detection by default - ONNX models only have FP16 for LLM/Flow
+        effective_precision = precision if precision != "auto" else "fp16"
+
+        self.logger.info(f"Initializing CosyVoiceTTS with precision: {effective_precision}")
+
         # Create config
         if config is not None:
             self.config = config
         else:
             self.config = CosyVoiceConfig(
                 model_dir=model_dir or str(CosyVoiceConfig().model_dir),
-                precision=precision,
+                precision=effective_precision,
                 preload=preload,
                 num_threads=num_threads,
                 log_level=log_level

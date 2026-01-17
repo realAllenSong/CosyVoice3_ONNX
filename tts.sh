@@ -1,7 +1,13 @@
 #!/bin/bash
 # ============================================================
 # CosyVoice3 ONNX - 一键启动脚本
-# 读取 config.json 配置并生成语音
+# 读取 config.json 配置并生成语音或启动服务器
+#
+# 使用方法:
+#   ./tts.sh              # 根据 config.json 的 mode 运行
+#   ./tts.sh server       # 直接启动 FastAPI 服务器
+#   ./tts.sh clone        # 直接运行语音克隆
+#   ./tts.sh preset       # 直接运行预设模式
 # ============================================================
 
 set -e
@@ -16,7 +22,16 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-CONFIG_FILE="${1:-config.json}"
+# 解析参数
+MODE_OVERRIDE=""
+CONFIG_FILE="config.json"
+
+if [ "$1" = "server" ] || [ "$1" = "clone" ] || [ "$1" = "preset" ] || [ "$1" = "batch" ]; then
+    MODE_OVERRIDE="$1"
+    CONFIG_FILE="${2:-config.json}"
+else
+    CONFIG_FILE="${1:-config.json}"
+fi
 
 echo -e "${BLUE}============================================================${NC}"
 echo -e "${BLUE}   CosyVoice3 ONNX TTS${NC}"
@@ -38,14 +53,28 @@ fi
 # 激活环境
 source .venv/bin/activate
 
-# 确保依赖已安装
+# 确保基础依赖已安装
 if ! python -c "import cosyvoice_onnx" 2>/dev/null; then
-    echo -e "${YELLOW}安装依赖...${NC}"
+    echo -e "${YELLOW}安装基础依赖...${NC}"
     uv pip install -e .
 fi
 
+# 如果是服务器模式，确保服务器依赖已安装
+if [ "$MODE_OVERRIDE" = "server" ] || grep -q '"mode": *"server"' "$CONFIG_FILE" 2>/dev/null; then
+    if ! python -c "import fastapi; import uvicorn; import sse_starlette" 2>/dev/null; then
+        echo -e "${YELLOW}安装服务器依赖...${NC}"
+        uv pip install -e ".[server]"
+    fi
+fi
+
 echo -e "${GREEN}配置文件: $CONFIG_FILE${NC}"
+if [ -n "$MODE_OVERRIDE" ]; then
+    echo -e "${GREEN}模式覆盖: $MODE_OVERRIDE${NC}"
+fi
 echo ""
+
+# 设置模式覆盖环境变量
+export COSYVOICE_MODE="$MODE_OVERRIDE"
 
 # 运行 Python 脚本
 python - "$CONFIG_FILE" << 'PYTHON_SCRIPT'
@@ -329,18 +358,68 @@ def run_preset_mode(config: dict):
     print(f"   耗时: {elapsed:.2f}s")
 
 
+def run_server_mode(config: dict):
+    """启动 FastAPI 服务器"""
+    import os
+
+    server_cfg = config.get('server', {})
+    model_cfg = config.get('model', {})
+
+    host = server_cfg.get('host', '127.0.0.1')
+    port = server_cfg.get('port', 8000)
+    log_level = server_cfg.get('log_level', 'INFO').lower()
+    workers = server_cfg.get('workers', 1)
+
+    print(f"🌐 启动 FastAPI 服务器...")
+    print(f"   地址: http://{host}:{port}")
+    print(f"   API 文档: http://{host}:{port}/docs")
+    print(f"   日志级别: {log_level}")
+    print(f"   精度: {model_cfg.get('precision', 'fp16')}")
+    print()
+    print("📌 可用端点:")
+    print("   GET  /health         - 健康检查")
+    print("   GET  /presets        - 预设声音列表")
+    print("   POST /tts            - 基础 TTS")
+    print("   POST /clone          - 声音克隆")
+    print("   POST /stream         - 流式输出")
+    print("   POST /validate_audio - 验证音频")
+    print()
+    print("按 Ctrl+C 停止服务器")
+    print("=" * 60)
+
+    # 设置环境变量让服务器读取配置
+    os.environ['COSYVOICE_CONFIG'] = sys.argv[1] if len(sys.argv) > 1 else 'config.json'
+
+    import uvicorn
+    uvicorn.run(
+        "cosyvoice_onnx.server:app",
+        host=host,
+        port=port,
+        log_level=log_level,
+        workers=workers,
+        reload=False
+    )
+
+
 def main():
+    import os
+
     if len(sys.argv) < 2:
         print("Usage: python tts_runner.py config.json")
         sys.exit(1)
-    
+
     config_path = sys.argv[1]
     config = load_config(config_path)
-    
-    mode = config.get('mode', 'clone')
+
+    # 检查是否有模式覆盖 (从环境变量)
+    mode_override = os.environ.get('COSYVOICE_MODE', '')
+    mode = mode_override if mode_override else config.get('mode', 'clone')
+
     print(f"🚀 模式: {mode}")
-    
-    if mode == 'clone':
+
+    if mode == 'server':
+        run_server_mode(config)
+    elif mode == 'clone':
         run_clone_mode(config)
     elif mode == 'batch':
         run_batch_mode(config)
@@ -348,6 +427,7 @@ def main():
         run_preset_mode(config)
     else:
         print(f"❌ 未知模式: {mode}")
+        print("   可用模式: server | clone | preset | batch")
 
 
 if __name__ == '__main__':
